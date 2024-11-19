@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AdvancedMaze")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7482e8eb627353fd27d76574c6d935bb0d606ae5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+56cf01cd6f18ebf88c6f64937bdff1e0b1fac562")]
 [assembly: System.Reflection.AssemblyProductAttribute("AdvancedMaze")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AdvancedMaze")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

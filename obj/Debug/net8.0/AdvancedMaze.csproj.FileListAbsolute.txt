@@ -1,0 +1,15 @@
+C:\Users\michael.lewellen\CODE\AdvancedMaze\bin\Debug\net8.0\AdvancedMaze.exe
+C:\Users\michael.lewellen\CODE\AdvancedMaze\bin\Debug\net8.0\AdvancedMaze.deps.json
+C:\Users\michael.lewellen\CODE\AdvancedMaze\bin\Debug\net8.0\AdvancedMaze.runtimeconfig.json
+C:\Users\michael.lewellen\CODE\AdvancedMaze\bin\Debug\net8.0\AdvancedMaze.dll
+C:\Users\michael.lewellen\CODE\AdvancedMaze\bin\Debug\net8.0\AdvancedMaze.pdb
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.AssemblyInfoInputs.cache
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.AssemblyInfo.cs
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.csproj.CoreCompileInputs.cache
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.sourcelink.json
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.dll
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\refint\AdvancedMaze.dll
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.pdb
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\AdvancedMaze.genruntimeconfig.cache
+C:\Users\michael.lewellen\CODE\AdvancedMaze\obj\Debug\net8.0\ref\AdvancedMaze.dll
