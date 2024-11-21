@@ -11,7 +11,10 @@ public class MazeGenerator
         {
             for (int j = 0; j < cols; j++)
             {
-                maze[i, j] = (i == 0 || i == rows - 1 || j == 0 || j == cols - 1) ? '*' : ' ';
+                if (i == 0 || i == rows - 1 || j == 0 || j == cols - 1) 
+                {
+                
+                }
             }
         }
 

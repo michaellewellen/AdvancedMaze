@@ -1,119 +1,245 @@
 public class Maze
 {
-    public char[,] Grid { get; private set; }
-    public int Rows => Grid.GetLength(0);
-    public int Columns => Grid.GetLength(1);
-    public Vault Vault { get; private set; } // Expose the Vault for other operations
+    private int Rows { get; }
+    private int Columns { get; }
+    public Cell[,] Cells { get; }
 
     public Maze(int rows, int cols)
     {
-        if (rows < 5 || cols < 5) throw new ArgumentException("Maze dimensions must be at least 5x5.");
-        GenerateMaze(rows, cols); // Generate a random maze
-    }
+        Rows = rows;
+        Columns = cols;
+        Cells = new Cell[Rows, Columns];
 
-    private void GenerateMaze(int rows, int cols)
-    {
-        Grid = new char[rows, cols];
-
-        // Step 1: Fill the perimeter with walls
-        for (int i = 0; i < rows; i++)
-        {
-            for (int j = 0; j < cols; j++)
-            {
-                Grid[i, j] = (i == 0 || i == rows - 1 || j == 0 || j == cols - 1) ? '*' : ' ';
-            }
-        }
-
-        // Step 2: Generate a random vault
-        PlaceVault(rows, cols);
-
-        // Step 3: Add random walls for vertical symmetry
-        Random rand = new Random();
-        for (int i = 1; i < rows / 2; i++) // Half rows for vertical symmetry
-        {
-            for (int j = 1; j < cols - 1; j++)
-            {
-                Grid[i, j] = (rand.NextDouble() < 0.2) ? '*' : ' ';
-            }
-        }
-
-        // Step 4: Mirror the top half to the bottom half for symmetry
-        for (int i = 1; i < rows / 2; i++)
-        {
-            for (int j = 1; j < cols - 1; j++)
-            {
-                Grid[rows - i - 1, j] = Grid[i, j];
-            }
-        }
-    }
-
-    private void PlaceVault(int rows, int cols)
-    {
-        Random rand = new Random();
-
-        // Determine vault dimensions
-        int vaultWidth = rand.Next(5, Math.Min(10, cols - 10)); // Random width
-        int vaultHeight = rand.Next(3, Math.Min(6, rows / 3));  // Random height
-
-        // Random position for the vault
-        int vaultTop = rows / 4;
-        int vaultLeft = cols / 4;
-
-        // Create the Vault object
-        Vault  = new Vault(vaultTop, vaultTop + vaultHeight - 1, vaultLeft, vaultLeft + vaultWidth - 1);
-
-        // Build the vault in the maze grid
-        for (int i = Vault.TopRow; i <= Vault.BottomRow; i++)
-        {
-            for (int j = Vault.LeftCol; j <= Vault.RightCol; j++)
-            {
-                if (i == Vault.TopRow || i == Vault.BottomRow || j == Vault.LeftCol || j == Vault.RightCol)
-                {
-                    Grid[i, j] = (j == Vault.RightCol && i == (Vault.TopRow + Vault.BottomRow) / 2) ? '#' : '|'; // Door on the side
-                }
-                else
-                {
-                    Grid[i, j] = ' ';
-                }
-            }
-        }
-    }
-
-    public (int, int) GetRandomStartingPosition()
-    {
-        if (Vault == null)
-        {
-            throw new InvalidOperationException("Vault is not initialized");
-        }
-        Random rand = new Random();
-        int row, col;
-
-        do
-        {
-            row = rand.Next(1, Rows - 1);
-            col = rand.Next(1, Columns - 1);
-        } while (Grid[row, col] != ' ' || Vault.IsInVault(row, col)); // Use Vault's IsInVault method
-
-        return (row, col);
-    }
-
-    public void DrawMaze()
-    {
-        Console.SetCursorPosition(0, 0); // Reset cursor position to the top-left
+        // Initialize cells with their top-left positions
         for (int i = 0; i < Rows; i++)
         {
             for (int j = 0; j < Columns; j++)
             {
-                Console.Write(Grid[i, j]);
+                int x = j * 5; 
+                int y = i * 3; 
+                Cells[i, j] = new Cell(x, y);
             }
-            Console.WriteLine();
+        }
+
+        InsertVault();
+        GeneratePaths();
+        ToGrid();
+    }
+
+    // Display the entire maze
+    public void DisplayMaze()
+    {
+        Console.Clear();
+
+        // Iterate through all cells and display them
+        for (int row = 0; row < Rows; row++)
+        {
+            for (int col = 0; col < Columns; col++)
+            {
+                Cells[row, col].DisplayCell(Cells, Columns, Rows);
+            }
         }
     }
 
-    public void UpdateCell(int row, int col, char value)
+    public void InsertVault()
     {
-        Grid[row, col] = value;
-        Console.SetCursorPosition(col, row);
-        Console.Write(value);
+        Cells[0,0].EastWall = false;
+        Cells[0,0].SouthWall = false;
+        Cells[0,1].WestWall = false;
+        Cells[0,1].SouthWall = false;
+        Cells[1,0].NorthWall = false;
+        Cells[1,0].EastWall = false;
+        Cells[1,1].NorthWall = false;
+        Cells[1,1].WestWall = false;
+        Cells[1,1].HasDoor = true;
+        Cells[1,2].HasDoor = true;
     }
+
+    public void GeneratePaths()
+    {
+        Random rand = new Random();
+        HashSet<(int, int)> visited = new HashSet<(int, int)>();
+        Stack<(int,int)> stack = new Stack<(int, int)>();
+
+        // start in the bottom right corner
+        stack.Push((Rows-1,Columns-1));
+        visited.Add((Rows-1,Columns-1));
+        Console.WriteLine($"Starting at ({Rows - 1}, {Columns - 1})");
+
+        while (stack.Count > 0)
+        {
+            var (currentRow,currentCol) = stack.Peek();
+            List<(int,int)> neighbors = GetUnvisitedNeighbors(currentRow, currentCol, visited);
+            Console.WriteLine($"Current Cell: ({currentRow}, {currentCol}), Neighbors: {neighbors.Count}");
+
+            if (neighbors.Count > 0)
+            {
+                var (nextRow, nextCol) = neighbors[rand.Next(neighbors.Count)];
+
+                Console.WriteLine($"Moving to ({nextRow}, {nextCol})");
+                RemoveWallBetween(currentRow, currentCol, nextRow, nextCol);
+
+                visited.Add((nextRow, nextCol));
+                stack.Push((nextRow, nextCol));
+            }
+            else
+            {
+                Console.WriteLine($"Backtracking from ({currentRow}, {currentCol})");
+                stack.Pop();
+            }
+        }
+    }
+
+    private List<(int, int)> GetUnvisitedNeighbors(int row, int col, HashSet<(int,int)> visited)
+    {
+        var neighbors = new List<(int,int)>();
+        // Check north neighbor
+        if (row > 0 && !visited.Contains((row-1,col)) && !IsVaultCell(row-1,col))
+        {
+            neighbors.Add((row-1,col));
+            Console.WriteLine("Cell has a northern neighbor");
+        }
+        // Check south neighbor
+        if (row < Rows -1 && !visited.Contains((row+1,col)) && !IsVaultCell(row+1,col))
+        {
+            neighbors.Add((row+1,col));
+            Console.WriteLine("Cell has a southern neighbor");
+        }
+        // Check west neighbor
+        if (col > 0 && !visited.Contains((row,col-1)) && !IsVaultCell(row,col-1))
+        {
+            neighbors.Add((row,col-1));
+            Console.WriteLine("Cell has an Western Neighbor");
+        }
+        // Check east neighbor
+        if (col < Columns-1 && !visited.Contains((row,col+1)) && !IsVaultCell(row,col+1))
+        {
+            neighbors.Add ((row, col+1));
+            Console.WriteLine("Cell has an Eastern neighbor");
+        }
+
+        neighbors = neighbors.OrderBy(_ => Guid.NewGuid()).ToList();
+        return neighbors;
+    }
+
+    private bool IsVaultCell(int row, int col)
+    {
+        return (row == 0 && col == 0) || (row == 0 && col ==1) || (row == 1 && col == 0) || (row == 1 && col == 1);
+    }
+
+    private void RemoveWallBetween(int row1, int col1, int row2, int col2)
+    {
+        if (row1 == row2) // same row
+        {
+            if(col1 < col2) 
+            {
+                Cells[row1, col1].EastWall = false;
+                Cells[row2, col2].WestWall = false;
+            }
+            else
+            {
+                Cells[row1, col1].WestWall = false;
+                Cells[row2, col2].EastWall = false;
+            }
+        }
+         else if (col1 == col2) // Same column
+        {
+            if (row1 < row2) // Cell2 is to the south of Cell1
+            {
+                Cells[row1, col1].SouthWall = false;
+                Cells[row2, col2].NorthWall = false;
+            }
+            else // Cell2 is to the north of Cell1
+            {
+                Cells[row1, col1].NorthWall = false;
+                Cells[row2, col2].SouthWall = false;
+            }
+        }
+    }
+   
+    public char[,] ToGrid()
+    {
+        int gridRows = Rows * 3 + 1; // Account for the bottom wall of the last row
+        int gridCols = Columns * 5 + 1; // Account for the right wall of the last column
+        char[,] grid = new char[gridRows, gridCols];
+
+        // Fill the grid with spaces initially
+        for (int i = 0; i < gridRows; i++)
+        {
+            for (int j = 0; j < gridCols; j++)
+            {
+                grid[i, j] = ' ';
+            }
+        }
+
+        // Populate the grid based on each cell's walls
+        for (int row = 0; row < Rows; row++)
+        {
+            for (int col = 0; col < Columns; col++)
+            {
+                var cell = Cells[row, col];
+                int startY = row * 3; // Row position in the grid
+                int startX = col * 5; // Column position in the grid
+
+                // Top wall
+                if (cell.NorthWall)
+                {
+                    for (int x = startX; x < startX + 5; x++)
+                    {
+                        grid[startY, x] = '*';
+                    }
+                }
+
+                // Left wall
+                if (cell.WestWall)
+                {
+                    for (int y = startY + 1; y < startY + 3; y++)
+                    {
+                        grid[y, startX] = '*';
+                    }
+                }
+
+                // Bottom wall (only draw if it's the last row or the cell below doesn't exist)
+                if (cell.SouthWall && (row == Rows - 1 || !Cells[row + 1, col].NorthWall))
+                {
+                    for (int x = startX; x < startX + 5; x++)
+                    {
+                        grid[startY + 3, x] = '*';
+                    }
+                }
+
+                // Right wall (only draw if it's the last column or the cell to the right doesn't exist)
+                if (cell.EastWall && (col == Columns - 1 || !Cells[row, col + 1].WestWall))
+                {
+                    for (int y = startY + 1; y < startY + 3; y++)
+                    {
+                        grid[y, startX + 5] = '*';
+                    }
+                }
+
+                // Add doors if they exist
+                if (cell.HasDoor)
+                {
+                    for (int y = startY + 1; y < startY + 3; y++)
+                    {
+                        grid[y, startX + 5] = '|'; // Door instead of wall
+                    }
+                }
+
+                // Inner space (always draw the empty space inside the cell)
+                for (int y = startY + 1; y < startY + 3; y++)
+                {
+                    for (int x = startX + 1; x < startX + 5; x++)
+                    {
+                        grid[y, x] = ' ';
+                    }
+                }
+            }
+        }
+
+        return grid;
+    }
+
+
+    
 }

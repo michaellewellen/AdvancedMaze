@@ -1,228 +1,237 @@
-using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 
-public class GameLogic 
+public class GameLogic
 {
-    private Maze maze;
+    private char[,] grid;
     private Player player;
-    private List<Enemy> enemies;
-    private Vault vault;
     private List<Collectible> collectibles;
-    private InputHandler inputHandler;
-    private bool gameWon = false;
-    private CancellationTokenSource cts;
-    private int difficulty;
+    private List<Enemy> enemies;
+    private Maze maze; 
 
-    public GameLogic(int rows, int cols , int difficulty)
+    public GameLogic(int rows, int cols, int numCoins, int difficulty)
     {
-        this.difficulty = difficulty;
-        maze = new Maze(rows,cols);
+        maze = new Maze(rows, cols);
+        grid = maze.ToGrid();
+
+        int numEnemies = difficulty * 3;
         InitializePlayer();
-        InitializeVault();
-        InitializeEnemies(difficulty);
-        InitializeCollectibles(10,9);
-        InitializeInputHandler();
+        InitializeCollectibles(numCoins);
+        InitializeEnemies(numEnemies);   
+        InitializeExit();     
     }
 
-    public void DrawMaze()
+    public void DisplayInitialGrid()
     {
-        maze.DrawMaze();
+        Console.Clear();
+
+        for (int i = 0; i < grid.GetLength(0); i++)
+        {
+            for (int j = 0; j < grid.GetLength(1); j++)
+            {
+                Console.Write(grid[i, j]);
+            }
+            Console.WriteLine();
+        }
+
+        // Move the cursor to the score area
+        Console.SetCursorPosition(0, grid.GetLength(0));
+        Console.WriteLine($"Score: {player.Score}");
     }
 
+    private void UpdateScoreDisplay()
+    {
+        Console.SetCursorPosition(0, grid.GetLength(0));
+        Console.WriteLine($"Score: {player.Score}        ");
+    }
+
+    private void UpdateCellDisplay(int row, int col, char symbol)
+    {
+        Console.SetCursorPosition(col, row);
+        Console.Write(symbol);
+    }
+    private void InitializeExit()
+    {
+        int exitRow = 1*3 + 1;
+        int exitCol = 1*5 + 2;
+        grid[exitRow,exitCol] = '#';
+        Console.SetCursorPosition(exitCol,exitRow);
+        Console.Write("#");
+    }
     private void InitializePlayer()
     {
-        (int row, int col) = maze.GetRandomStartingPosition();
+        var (row,col) = FindRandomEmptyPosition();
         player = new Player(row,col);
-        maze.UpdateCell(player.Row, player.Col, '@');
-    }
-    private void InitializeVault()
-    {
-        vault = new Vault (7,13,18,34);        
+        grid[row,col] = '@';
     }
 
-    private void InitializeEnemies(int difficulty)
-    {
-        enemies = new List<Enemy>();
-        int enemyCount = difficulty * 2;
-        Random rand = new Random();
-        for (int i = 0; i < enemyCount; i ++)
-        {
-            int row,col;
-            do
-            {
-                row = rand.Next(maze.Rows);
-                col = rand.Next(maze.Columns);                
-            } while (maze.Grid[row, col] != ' ');
-            enemies.Add(new Enemy(row, col));
-            maze.UpdateCell(row, col, '%');
-        }
-    }
-
-    private void InitializeCollectibles(int numCoins, int numVaultTreasures = 1)
+    private void InitializeCollectibles(int numCoins)
     {
         collectibles = new List<Collectible>();
-        Random rand = new Random();
 
         for (int i = 0; i < numCoins; i++)
         {
-            int row,col;
-            do
+            var(row, col) = FindRandomEmptyPosition();
+            var coin = new Collectible(row, col, '^');
+            collectibles.Add(coin);
+            grid[row,col] = '^';
+        }
+         var (treasureRow, treasureCol) = FindRandomEmptyPosition();
+         var treasure = new Collectible(treasureRow, treasureCol, '$');
+         collectibles.Add(treasure);
+         grid[treasureRow,treasureCol] = '$';
+    }
+
+    private void InitializeEnemies(int numEnemies)
+    {
+        enemies = new List<Enemy>();
+
+        for (int i = 0; i < numEnemies; i++)
+        {
+            var (row,col) = FindRandomEmptyPosition();
+            var enemy = new Enemy(row, col);
+            enemies.Add(enemy);
+            grid[row,col] = '%';
+        }
+    }
+
+    private (int,int) FindRandomEmptyPosition()
+    {
+        Random rand = new Random();
+        int rows = grid.GetLength(0);
+        int cols = grid.GetLength(1);
+
+        while (true)
+        {
+            int row = rand.Next(rows);
+            int col = rand.Next(cols);
+
+            if (grid[row,col] == ' ')
             {
-                row = rand.Next(maze.Rows);
-                col = rand.Next(maze.Columns);
-            }while (maze.Grid[row,col] != ' ' || vault.IsInVault(row, col));
-            collectibles.Add(new Collectible(row, col, '^'));
-            maze.UpdateCell(row, col, '^');
+                return (row, col);
+            }
         }
-        for (int i = 0; i< numVaultTreasures; i ++)
+    }
+
+    public void DisplayGrid()
+    {
+        Console.Clear();
+
+        for (int i = 0; i < grid.GetLength(0); i++)
         {
-            int row, col;
-            do
+            for (int j = 0; j < grid.GetLength(1); j ++)
             {
-                row = rand.Next(vault.TopRow, vault.BottomRow + 1);
-                col = rand.Next(vault.LeftCol, vault.RightCol + 1);                
-            } while (maze.Grid[row, col] != ' ');
-            collectibles.Add(new Collectible(row,col, '$'));
-            maze.UpdateCell(row,col,'$');
+                Console.Write(grid[i,j]);
+            }
+        }
+
+
+    }
+
+    public async Task MoveEnemiesAsync(int difficulty)
+    {
+        int delay = 500 / difficulty; // Speed increases with difficulty
+
+        while (true)
+        {
+            MoveEnemies(); // Move enemies based on their logic
+            await Task.Delay(delay); // Pause before moving again
         }
     }
 
-    private void InitializeInputHandler()
-    {
-        inputHandler = new InputHandler
-        {
-            OnUp = () => MovePlayer(player.Row - 1, player.Col),
-            OnDown = () => MovePlayer(player.Row + 1, player.Col),
-            OnLeft = () => MovePlayer(player.Row, player.Col - 1),
-            OnRight = () => MovePlayer(player.Row, player.Col + 1)
-        };
-    }
 
-    public void RunGameLoop()
+    public void MovePlayer(ConsoleKey direction)
     {
-        cts = new CancellationTokenSource();
-        Task.Run(() => MoveEnemies(cts.Token));
+        int newRow = player.Row, newCol = player.Col;
 
-        while (!gameWon)
+        switch (direction)
         {
-            ConsoleKey key = Console.ReadKey(true).Key;
-            inputHandler.HandleInput(key);
+            case ConsoleKey.UpArrow:
+                if (newRow > 0 && grid[newRow - 1, newCol] != '*') newRow--;
+                break;
+            case ConsoleKey.DownArrow:
+                if (newRow < grid.GetLength(0) - 1 && grid[newRow + 1, newCol] != '*') newRow++;
+                break;
+            case ConsoleKey.LeftArrow:
+                if (newCol > 0 && grid[newRow, newCol - 1] != '*') newCol--;
+                break;
+            case ConsoleKey.RightArrow:
+                if (newCol < grid.GetLength(1) - 1 && grid[newRow, newCol + 1] != '*') newCol++;
+                break;
         }
 
-        cts.Cancel();
-        Console.CursorVisible = true;
-        Console.SetCursorPosition(0, maze.Rows + 2);
-        Console.WriteLine("Congratulations, you've won the game!".PadRight(20));
+        HandlePlayerMove(newRow, newCol);
     }
 
-    private void MovePlayer(int newRow, int newCol)
+    private void HandlePlayerMove(int newRow, int newCol)
     {
-        if(!IsValidMove(newRow, newCol)) return;
-
-        if (maze.Grid[newRow, newCol] == '#')
-        {
-            gameWon = true;
-            maze.UpdateCell(player.Row, player.Col, ' ');
-            player.Move(newRow, newCol);
-            maze.UpdateCell(player.Row, player.Col, '@');
-            return;
-        }
-
-        maze.UpdateCell(player.Row, player.Col, ' ');
-
-        var collectible = collectibles.Find(c => c.Row == newRow && c.Col == newCol);
+        // Check for collectibles
+        var collectible = collectibles.FirstOrDefault(c => c.Row == newRow && c.Col == newCol);
         if (collectible != null)
         {
-            if (collectible.Symbol == '$')
-            {
-                player.CollectTreasure();
-            }
-            else if (collectible.Symbol == '^')
+            if (collectible.Symbol == '^')
             {
                 player.CollectCoin();
             }
-            
+            else if (collectible.Symbol == '$')
+            {
+                player.CollectTreasure();
+            }
+
+            // Remove the collectible
             collectibles.Remove(collectible);
-            DisplayScore();
-        }
+            grid[newRow, newCol] = ' ';
 
-        player.Move(newRow, newCol);
-        maze.UpdateCell(player.Row, player.Col, '@');
-       
-        CheckForVault();
-        CheckForWin();
-    }
-
-    private void DisplayScore()
-    {
-        Console.SetCursorPosition(0, maze.Rows + 1);
-        Console.Write($"Score: {player.Score}".PadRight(20));
-    }
-    private bool IsValidMove(int row, int col)
-    {
-        return  row >= 0 && row < maze.Rows &&
-                col >= 0 && col < maze.Columns &&
-                maze.Grid[row, col] != '*' && 
-                maze.Grid[row, col] != '|';
-    }
-
-    private void CheckForVault()
-    {
-        if(player.Score >= 1000 && !vault.IsUnlocked)
-        {
-            vault.Unlock();
-            UnlockVaultInMaze();
-        }
-    }
-
-    private void UnlockVaultInMaze()
-    {
-        for (int i = vault.TopRow; i <= vault.BottomRow; i++)
-        {
-            for (int j = vault.LeftCol; j <= vault.RightCol; j++)
+            if(player.Score >= 1000)
             {
-                if (maze.Grid[i,j] == '|')
-                {
-                    maze.UpdateCell(i, j, ' ');
-                }
+                UnlockVault();
             }
+            UpdateScoreDisplay();
         }
+
+        
+        if (grid[newRow, newCol] == '#')
+        {
+            Console.Clear();
+            Console.WriteLine("Congratulations! You win!");
+            Environment.Exit(0);
+        }
+    
+        // Update player position
+       UpdateCellDisplay(player.Row, player.Col, ' ');
+       player.Move(newRow, newCol);
+       UpdateCellDisplay(newRow, newCol, '@');
     }
 
-    private void CheckForWin()
+    private void UnlockVault()
     {
-        if (maze.Grid[player.Row, player.Col] == '#')
-        {
-            gameWon = true;
-        }
+        Console.WriteLine (" Vault unlocked");
+        grid[1*3 + 1, 2*5] = ' ';
+        grid[1*3 + 1, 1*5 + 4] = ' ';
     }
-
-    private async Task MoveEnemies(CancellationToken token)
+    public void MoveEnemies()
     {
-        Random rand = new Random();
-        int enemyDelay = 500/difficulty; 
-        while (!token.IsCancellationRequested)
+        Random rand = new Random();    
+        
+        foreach (var enemy in enemies)
         {
-            foreach (var enemy in enemies)
+            int oldRow = enemy.Row;
+            int oldCol = enemy.Col;
+
+            enemy.MoveTowardsPlayer(player.Row, player.Col, grid, rand);
+
+            if (enemy.Row != oldRow || enemy.Col != oldCol)
             {
-                maze.UpdateCell(enemy.Row, enemy.Col, ' ');
-                enemy.MoveTowardsPlayer(player.Row, player.Col, maze.Grid, rand);
-                maze.UpdateCell(enemy.Row, enemy.Col, '%');
-
-                if (enemy.Row == player.Row && enemy.Col == player.Col)
-                {
-                    GameOver();
-                    return;
-                }
+                UpdateCellDisplay(oldRow, oldCol, ' ');
+                UpdateCellDisplay(enemy.Row, enemy.Col, '%');
             }
-            await Task.Delay(enemyDelay);
+
         }
     }
 
-    private void GameOver()
+    public bool IsGameOver()
     {
-        Console.CursorVisible = true;
-        Console.WriteLine("Game Over! You were caught by an enemy.");
-        Environment.Exit(0);
+        return enemies.Any(e => e.Row == player.Row && e.Col == player.Col); // Enemy catches the player
     }
 
 }

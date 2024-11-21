@@ -5,21 +5,46 @@ using System.Threading.Tasks;
 
 class Program
 {
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
         Console.CursorVisible = false;
 
-        int difficulty = GetDifficultyLevel();
-        Console.Clear();
-        
-        GameLogic game = new GameLogic(50,25, difficulty);
-        game.DrawMaze();
+        try
+        {
+            int difficulty = GetDifficultyLevel();
+            GameLogic game = new GameLogic(15, 15, 10, difficulty);
+            game.DisplayInitialGrid();
+
+            Task.Run(() => game.MoveEnemiesAsync(difficulty));
         
 
-        game.RunGameLoop();
+            while (true)
+            {
+                if (game.IsGameOver())
+                {
+                    Console.SetCursorPosition(0, 15*3 + 3); // Move cursor below the score
+                    Console.WriteLine("Game Over! You were caught by an enemy.");
+                    break;
+                }
+
+                ConsoleKey key = Console.ReadKey(true).Key;
+                if (key == ConsoleKey.Escape) break;
+
+                game.MovePlayer(key); // Handle player movement
+               
+            }
+        }
+
+        finally
+        {
+            Console.CursorVisible = true;
+            Console.Clear();
+            Console.WriteLine("Thanks for playing");
+        }
     }
+    
 
-    static int GetDifficultyLevel()
+    private static int GetDifficultyLevel()
     {
         int difficulty;
         do
