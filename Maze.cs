@@ -172,74 +172,13 @@ public class Maze
             }
         }
 
-        // Populate the grid based on each cell's walls
-        for (int row = 0; row < Rows; row++)
+        for (int row = 0; row < Rows; row ++)
         {
-            for (int col = 0; col < Columns; col++)
+            for (int col = 0; col < Columns; col ++)
             {
-                var cell = Cells[row, col];
-                int startY = row * 3; // Row position in the grid
-                int startX = col * 5; // Column position in the grid
-
-                // Top wall
-                if (cell.NorthWall)
-                {
-                    for (int x = startX; x < startX + 5; x++)
-                    {
-                        grid[startY, x] = '*';
-                    }
-                }
-
-                // Left wall
-                if (cell.WestWall)
-                {
-                    for (int y = startY + 1; y < startY + 3; y++)
-                    {
-                        grid[y, startX] = '*';
-                    }
-                }
-
-                // Bottom wall (only draw if it's the last row or the cell below doesn't exist)
-                if (cell.SouthWall && (row == Rows - 1 || !Cells[row + 1, col].NorthWall))
-                {
-                    for (int x = startX; x < startX + 5; x++)
-                    {
-                        grid[startY + 3, x] = '*';
-                    }
-                }
-
-                // Right wall (only draw if it's the last column or the cell to the right doesn't exist)
-                if (cell.EastWall && (col == Columns - 1 || !Cells[row, col + 1].WestWall))
-                {
-                    for (int y = startY + 1; y < startY + 3; y++)
-                    {
-                        grid[y, startX + 5] = '*';
-                    }
-                }
-
-                // Add doors if they exist
-                if (cell.HasDoor)
-                {
-                    for (int y = startY + 1; y < startY + 3; y++)
-                    {
-                        grid[y, startX + 5] = '|'; // Door instead of wall
-                    }
-                }
-
-                // Inner space (always draw the empty space inside the cell)
-                for (int y = startY + 1; y < startY + 3; y++)
-                {
-                    for (int x = startX + 1; x < startX + 5; x++)
-                    {
-                        grid[y, x] = ' ';
-                    }
-                }
+                Cells[row, col].WriteCellToGrid(grid);
             }
         }
-
         return grid;
-    }
-
-
-    
+    }    
 }

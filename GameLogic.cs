@@ -3,7 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 
 public class GameLogic
 {
-    private char[,] grid;
+    public char[,] grid;
     private Player player;
     private List<Collectible> collectibles;
     private List<Enemy> enemies;

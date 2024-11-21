@@ -12,35 +12,47 @@ class Program
         try
         {
             int difficulty = GetDifficultyLevel();
-            GameLogic game = new GameLogic(15, 15, 10, difficulty);
-            game.DisplayInitialGrid();
+            GameLogic game = new GameLogic(10, 12, 10, difficulty);
 
+            // Start enemy movement in a separate task
             Task.Run(() => game.MoveEnemiesAsync(difficulty));
-        
+
+            ConsoleKey? currentKey = null; // Track the currently pressed key
 
             while (true)
             {
+                // Check if the game is over
                 if (game.IsGameOver())
                 {
-                    Console.SetCursorPosition(0, 15*3 + 3); // Move cursor below the score
+                    Console.SetCursorPosition(0, game.grid.GetLength(0) + 2); // Move cursor below the grid
                     Console.WriteLine("Game Over! You were caught by an enemy.");
                     break;
                 }
 
-                ConsoleKey key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.Escape) break;
+                // Handle player input
+                if (Console.KeyAvailable)
+                {
+                    ConsoleKey key = Console.ReadKey(true).Key;
+                    if (key == ConsoleKey.Escape) break; // Exit the game
+                    currentKey = key; // Update the currently pressed key
+                }
 
-                game.MovePlayer(key); // Handle player movement
-               
+                if (currentKey != null)
+                {
+                    game.MovePlayer(currentKey.Value); // Move player based on the key
+                    game.DisplayGrid(); // Update the display
+                }
+
+                Thread.Sleep(50); // Control the main loop speed
             }
         }
-
         finally
         {
-            Console.CursorVisible = true;
+            Console.CursorVisible = true; // Restore cursor visibility on game exit
             Console.Clear();
-            Console.WriteLine("Thanks for playing");
+            Console.WriteLine("Thanks for playing!");
         }
+      
     }
     
 
